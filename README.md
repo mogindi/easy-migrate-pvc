@@ -29,6 +29,7 @@ Effortlessly migrate Kubernetes PersistentVolumeClaims (PVCs) with a single comm
 
 ## Key Features
 
+- **Parallelization**: Migrate multiple PVCs simultaneously for faster overall transfer. The process is bottlenecked only by the network bandwidth from the workstation to the API servers.
 - **API-Powered**: No need for rsync, SCP, or other tools. Data transfer is handled entirely via Kubernetes API calls.
 - **Versatile Use Cases**: Suitable for migrations involving live workloads, staging environments, or complex multi-cluster setups.
 - **Minimal Setup**: Requires only `kubectl` and proper permissions.
@@ -67,18 +68,18 @@ Effortlessly migrate Kubernetes PersistentVolumeClaims (PVCs) with a single comm
 Below is a high-level diagram illustrating the migration process:
 
 1. **Source Cluster**: Temporary pod reads the data from the source PVC.
-2. **Kubernetes API**: Data is securely transferred via `kubectl` commands.
+2. **Workstation**: The script streams data through kubectl commands, piping stdout from the source to stdin of the destination.
 3. **Destination Cluster**: Temporary pod writes the data to the destination PVC.
 
 ```
-+------------------+                  +-------------------+
-|                  |                  |                   |
-|  Source Cluster  |   kubectl/API   | Destination Cluster|
-|  (src kubeconfig)|<--------------->| (dst kubeconfig)   |
-|                  |                  |                   |
-+------------------+                  +-------------------+
-        |                                      |
-   [SRC PVC]                              [DST PVC]
++------------------+         +-------------+         +--------------------+
+|                  |         |             |         |                    |
+|  Source Cluster  |   API   | Workstation |   API   | Destination Cluster|
+|  (src kubeconfig)|-------->| (kubectl)   |-------->| (dst kubeconfig)   |
+|                  |         |             |         |                    |
++------------------+         +-------------+         +--------------------+
+        |                                                  |
+   [SRC PVC]                                            [DST PVC]
 ```
 
 This ensures no direct connectivity is needed between the source and destination clusters.
@@ -222,6 +223,12 @@ easy-migrate-pvc.sh
 - Temporary pods are automatically created and cleaned up during the process.
 - Ensure your destination PVC has adequate storage capacity to handle the data from the source PVC.
 - Test migrations in non-production environments before using the script in production.
+
+---
+
+## Limitations
+
+No Differential Copies: The destination PVC is completely wiped and recopied in every run. This makes the script ideal for first-time data migrations but not for incremental updates.
 
 ---
 
