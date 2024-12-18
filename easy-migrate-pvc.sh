@@ -35,6 +35,12 @@ DST_CONTAINER_IMAGE=$MIG_CONTAINER_IMAGE
 SRC_EXTRA_ARGS="--kubeconfig $SRC_KUBECONFIG -n $SRC_NAMESPACE"
 DST_EXTRA_ARGS="--kubeconfig $DST_KUBECONFIG -n $DST_NAMESPACE"
 
+function print_green {
+  GREEN='\033[0;32m'
+  NC='\033[0m' # No Color
+  echo -e "${GREEN}$1${NC}"
+}
+
 set -e
 if [[ $DEBUG == true ]]; then
   set -x
@@ -47,7 +53,7 @@ dest_pvc_used_by=$(kubectl $DST_EXTRA_ARGS describe pvc $DST_PVC_NAME  | grep "^
 test $dest_pvc_used_by == "<none>" || ( echo "dest pvc used by pod(s) $dest_pvc_used_by. Please ensure they are not used. Exiting.." ; exit 1 )
 
 # create pods
-echo "----> Creating pods.."
+print_green "----> Creating pods.."
 cat <<EOF | kubectl $SRC_EXTRA_ARGS apply -f -
 apiVersion: v1
 kind: Pod
@@ -94,27 +100,27 @@ spec:
 EOF
 
 # wait for pods to be ready
-echo "----> Waiting for pods to be ready.."
+print_green "----> Waiting for pods to be ready.."
 while kubectl $SRC_EXTRA_ARGS get pods $SRC_CONTAINER_NAME --output="jsonpath={.status.containerStatuses[*].ready}" | grep -q false; do sleep 5; done
 while kubectl $DST_EXTRA_ARGS get pods $DST_CONTAINER_NAME --output="jsonpath={.status.containerStatuses[*].ready}" | grep -q false; do sleep 5; done
 
 # prepare pods with pre-migration commands (i.e install packages?)
-echo "----> Prepare pods.."
+print_green "----> Prepare pods.."
 STARTUP_COMMANDS="/bin/true"  # If additional tools want to be installed - here is where u do it
 ( kubectl $SRC_EXTRA_ARGS exec $SRC_CONTAINER_NAME -- /bin/bash -c "$STARTUP_COMMANDS" ) &
 ( kubectl $DST_EXTRA_ARGS exec $DST_CONTAINER_NAME -- /bin/bash -c "$STARTUP_COMMANDS" ) &
 wait
 
 # clean destination files (just incase)
-echo "----> Wiping out destination pvc.."
+print_green "----> Wiping out destination pvc.."
 kubectl $DST_EXTRA_ARGS exec $DST_CONTAINER_NAME -- /bin/bash -c 'cd /mnt; ls -A1 | xargs rm -rf'
 
 # copy with tar
-echo "----> Migrating source pvc to destination pvc.."
+print_green "----> Migrating source pvc to destination pvc.."
 kubectl $SRC_EXTRA_ARGS exec $SRC_CONTAINER_NAME -- /bin/bash -c 'tar czf - -C / mnt/ --totals' | kubectl $DST_EXTRA_ARGS exec -i $DST_CONTAINER_NAME -- /bin/bash -c 'tar xzf - -C / --totals'
 
 # delete pods
-echo "----> Deleting pods.."
+print_green "----> Deleting pods.."
 ( kubectl $SRC_EXTRA_ARGS delete pod $SRC_CONTAINER_NAME ) &
 ( kubectl $DST_EXTRA_ARGS delete pod $DST_CONTAINER_NAME ) &
 wait
