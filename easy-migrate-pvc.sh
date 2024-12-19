@@ -21,12 +21,14 @@ DEBUG=${DEBUG:-false}  # set to 'true' if troubleshooting needed
 
 ###################
 
-if [[ -z $SRC_KUBECONFIG ]]; then echo SRC_KUBECONFIG not set. ; exit 1; fi
-if [[ -z $SRC_NAMESPACE ]]; then echo SRC_NAMESPACE not set. ; exit 1; fi
-if [[ -z $SRC_PVC_NAME ]]; then echo SRC_PVC_NAME not set. ; exit 1; fi
-if [[ -z $DST_KUBECONFIG ]]; then echo DST_KUBECONFIG not set. ; exit 1; fi
-if [[ -z $DST_NAMESPACE ]]; then echo DST_NAMESPACE not set. ; exit 1; fi
-if [[ -z $DST_PVC_NAME ]]; then echo DST_PVC_NAME not set. ; exit 1; fi
+if [[ -z $SRC_KUBECONFIG ]]; then echo SRC_KUBECONFIG not set. ; missing_var=true; fi
+if [[ -z $SRC_NAMESPACE ]];  then echo SRC_NAMESPACE not set. ; missing_var=true; fi
+if [[ -z $SRC_PVC_NAME ]];   then echo SRC_PVC_NAME not set. ; missing_var=true; fi
+if [[ -z $DST_KUBECONFIG ]]; then echo DST_KUBECONFIG not set. ; missing_var=true; fi
+if [[ -z $DST_NAMESPACE ]];  then echo DST_NAMESPACE not set. ; missing_var=true; fi
+if [[ -z $DST_PVC_NAME ]];   then echo DST_PVC_NAME not set. ; missing_var=true; fi
+
+if [[ $missing_var == true ]]; then exit 1; fi
 
 SUFFIX=$RANDOM
 SRC_CONTAINER_BASE_NAME=src-migrate-pvc-$SRC_PVC_NAME
